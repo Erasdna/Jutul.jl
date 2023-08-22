@@ -365,6 +365,11 @@ Replace values of `x` in-place by `y`, leaving `x` with the values of y and the 
     @. v = v - value(v) + value(next)
 end
 
+@inline function update_values!(v::AbstractArray{<:Real}, next::Real)
+    # The ForwardDiff type is immutable, so to preserve the derivatives we do this little trick:
+    @. v = v - value(v) + next
+end
+
 """
     update_values!(x, dx)
 
@@ -385,6 +390,16 @@ end
     return value.(x)
 end
 
+"""
+Get partial
+"""
+@inline function partials(x)
+    return ForwardDiff.values(ForwardDiff.partials(x))
+end
+
+@inline function partials(x::AbstractArray)
+    return partials.(x)
+end
 """
     value(d::Dict)
 Call value on all elements of some Dict.

@@ -547,9 +547,11 @@ end
 
 function transfer_accumulation!(acc, eq::ConservationLaw, state)
     s = Jutul.conserved_symbol(eq)
-    @. acc = state[s] #map(s->s.value,state[s])
+    @. acc = map(s->s.value,state[s]) #state[s] 
+    return state[s]
 end
 
 function transfer_accumulation!(acc, eq::JutulEquation, state)
     @. acc = zero(eltype(acc))
+    return zero(eltype(acc))
 end

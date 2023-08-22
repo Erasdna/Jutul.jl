@@ -82,10 +82,11 @@ function devectorize_variable!(state, V, k, info, F_inv; config = c)
     if isnothing(lumping)
         @assert length(state_val) == n "Expected field $k to have length $n, was $(length(state_val))"
         if state_val isa AbstractVector
-            for i in 1:n
+            #for i in 1:n
                 #state_val[i] = ForwardDiff.Dual{Jutul.Cells()}(F_inv(V[offset+i]),state_val[i].partials)
-                state_val[i]=F_inv(V[offset+i])
-            end
+                #update_values!(state_val[i],F_inv(V[offset+i]))
+            #end
+            update_values!(state_val,F_inv(V[offset+1:offset+n]))
         else
             l, m = size(state_val)
             ctr = 1

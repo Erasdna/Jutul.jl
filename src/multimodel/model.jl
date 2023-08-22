@@ -607,9 +607,11 @@ function update_linearized_system!(storage, model::MultiModel, executor = defaul
         kwarg...)
     @assert equation_offset == 0 "The multimodel version assumes offset == 0, was $offset"
     # Update diagonal blocks (model with respect to itself)
-    @tic "models" update_diagonal_blocks!(storage, model, targets; kwarg...)
+    #@tic "models" update_diagonal_blocks!(storage, model, targets; kwarg...)
+    update_diagonal_blocks!(storage, model, targets; kwarg...)
     # Then, update cross terms (models' impact on other models)
-    @tic "cross-model" update_offdiagonal_blocks!(storage, model, targets, sources; kwarg...)
+    #@tic "cross-model" update_offdiagonal_blocks!(storage, model, targets, sources; kwarg...)
+    update_offdiagonal_blocks!(storage, model, targets, sources; kwarg...)
     if haskey(storage, :LinearizedSystem)
         post_update_linearized_system!(storage.LinearizedSystem, executor, storage, model)
     end

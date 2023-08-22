@@ -134,6 +134,7 @@ cross_term_entities_source(ct, eq::Nothing, model) = nothing
 
 function update_main_linearized_system_subgroup!(storage, model, model_keys, offsets, lsys; kwarg...)
     for (index, key) in enumerate(model_keys)
+        #println(key)
         offset = offsets[index]
         m = model.models[key]
         s = storage[key]

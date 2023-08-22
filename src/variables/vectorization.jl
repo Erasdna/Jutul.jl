@@ -1,10 +1,15 @@
 export vectorize_variables, vectorize_variables!, devectorize_variables!
 
 
-function vectorize_variables(model, state_or_prm, type_or_map = :primary; config = nothing)
+function vectorize_variables(model, state_or_prm, type_or_map = :primary, ad=false; config = nothing)
     mapper = get_mapper_internal(model, type_or_map)
     n = vectorized_length(model, mapper)
-    V = zeros(n)
+    if ad
+        V = zeros(ForwardDiff.Dual,n)
+    else
+        V = zeros(n)
+    end
+
     return vectorize_variables!(V, model, state_or_prm, mapper, config = config)
 end
 
@@ -78,7 +83,8 @@ function devectorize_variable!(state, V, k, info, F_inv; config = c)
         @assert length(state_val) == n "Expected field $k to have length $n, was $(length(state_val))"
         if state_val isa AbstractVector
             for i in 1:n
-                state_val[i] = F_inv(V[offset+i])
+                #state_val[i] = ForwardDiff.Dual{Jutul.Cells()}(F_inv(V[offset+i]),state_val[i].partials)
+                state_val[i]=F_inv(V[offset+i])
             end
         else
             l, m = size(state_val)

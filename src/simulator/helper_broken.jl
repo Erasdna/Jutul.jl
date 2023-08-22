@@ -13,7 +13,7 @@ Construct a helper simulator that can be used to compute the residuals and/or
 accumulation terms for a given type T. Useful for coupling Jutul to other
 solvers and types of automatic differentiation.
 """
-function HelperSimulator(model::M, T = Float64; executor::E = Jutul.default_executor(), kwarg...) where {M, E}
+function HelperSimulator(model::M, T = Float64; executor::E = Jutul.default_executor(),kwarg...) where {M, E}
     storage = JutulStorage()
     Jutul.setup_storage!(storage, model;
         setup_linearized_system = false,
@@ -24,7 +24,7 @@ function HelperSimulator(model::M, T = Float64; executor::E = Jutul.default_exec
 
     n = Jutul.number_of_degrees_of_freedom(model)
     r = zeros(T, n)
-    setup_helper_equation_storage!(storage, r, model)
+    #setup_helper_equation_storage!(storage, r, model)
     storage[:r] = r
     # TODO: Actually use these.
     storage[:primary_mapper] = Jutul.variable_mapper(model, :primary)
@@ -48,7 +48,7 @@ end
 
 Out of place version of `model_residual!`
 """
-function model_residual(sim::HelperSimulator{<:Any, <:Any, <:Any, T}, x, arg...; kwarg...) where T
+function model_residual(sim, x, arg...; kwarg...) 
     model = Jutul.get_simulator_model(sim)
     n = Jutul.number_of_degrees_of_freedom(model)
     @assert length(x) == n "Expected state vector to have $n values, was $(length(x))"
@@ -65,7 +65,7 @@ end
 
 Fill in the model residual into Vector r.
 """
-function model_residual!(r, sim, x, x0 = missing, dt = 1.0;
+function model_residual!(r,sim, x, x0 = missing, dt = 1.0;
         forces = setup_forces(sim.model),
         update_secondary = true,
         time = 0.0,
@@ -74,13 +74,18 @@ function model_residual!(r, sim, x, x0 = missing, dt = 1.0;
     )
     storage = get_simulator_storage(sim)
     model = get_simulator_model(sim)
-    update_before_step!(sim, dt, forces, time = time)
+    update_before_step!(sim,dt, forces, time = time)
     if !include_accumulation
         x0 = x
     end
 
     devectorize_variables!(storage.state, model, x)
     if !ismissing(x0)
+        # if !include_accumulation
+        #     storage[:state0]=storage.state
+        # else
+        #     devectorize_variables!(storage.state0, model, x0)
+        # end
         devectorize_variables!(storage.state0, model, x0)
         if update_secondary
             update_secondary_variables!(storage, model, true)
@@ -89,16 +94,20 @@ function model_residual!(r, sim, x, x0 = missing, dt = 1.0;
 
     model = get_simulator_model(sim)
     update_state_dependents!(storage, model, dt, forces; update_secondary = update_secondary, kwarg...) # time is important potential kwarg...
-    update_linearized_system!(storage, model, sim.executor, r = r, nzval = missing, lsys = missing)
+    #update_linearized_system!(storage, model, sim.executor, r = r, nzval = storage.LinearizedSystem.jac_buffer, lsys = storage.LinearizedSystem)
+    update_linearized_system!(storage, model, sim.executor, r = r, nzval = missing, lsys =missing)
     return r
 end
 
-function model_accumulation(sim::HelperSimulator, x, arg...; kwarg...)
+function model_accumulation(sim, x, arg...; kwarg...)
     model = Jutul.get_simulator_model(sim)
     n = Jutul.number_of_degrees_of_freedom(model)
     @assert length(x) == n
     acc = similar(x)
-    model_accumulation!(acc, sim, x, arg...; kwarg...)
+    #acc=zeros(eltype(x),n)
+    #acc = Jutul.vectorize_variables(model,sim.storage.state,:primary,true)
+    acc_jac = spzeros(n,n)
+    model_accumulation!(acc, acc_jac,sim, x, arg...; kwarg...)
 end
 
 """
@@ -110,7 +119,7 @@ end
 
 Compute the accumulation term into Vector acc.
 """
-function model_accumulation!(acc, sim::HelperSimulator, x, dt = 1.0;
+function model_accumulation!(acc, acc_jac, sim, x, dt = 1.0;
         forces = setup_forces(sim.model),
         update_secondary = true,
         kwarg...
@@ -121,11 +130,11 @@ function model_accumulation!(acc, sim::HelperSimulator, x, dt = 1.0;
     if update_secondary
         Jutul.update_secondary_variables!(storage, model)
     end
-    model_accumulation_internal!(acc, storage, model)
-    return acc
+    model_accumulation_internal!(acc, acc_jac,storage, model)
+    return acc #map(a -> a.value,acc),acc_jac
 end
 
-function model_accumulation_internal!(acc, storage, model; offset = 0)
+function model_accumulation_internal!(acc, acc_jac,storage, model; offset = 0)
     state = storage.state
     is_cm = is_cell_major(matrix_layout(model.context))
     for (k, eq) in model.equations
@@ -143,9 +152,19 @@ function model_accumulation_internal!(acc, storage, model; offset = 0)
             v = reshape(acc_i, n, m)'
         end
         transfer_accumulation!(acc_i, eq, state)
-        offset+=N
+        #build_jac!(acc_jac,acc_i,offset)
+        offset = offset + N
     end
     return offset
+end
+
+function build_jac!(acc_jac,acc_i,offset)
+    vals = map(p -> p.partials.values,acc_i)
+    for i = 1:length(vals)
+        for j = 1:length(vals[i])
+            acc_jac[offset + i,offset + i+j-length(vals[i])]=vals[i][j]
+        end
+    end
 end
 
 function setup_helper_equation_storage!(storage, r, model; offset = 0)

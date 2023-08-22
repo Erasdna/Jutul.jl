@@ -693,6 +693,7 @@ function update_linearized_system!(lsys, equations, eqs_storage, model::JutulMod
     bz = model_block_size(model)
     for key in keys(equations)
         @tic "$key" begin
+            #println(key)
             eq = equations[key]
             eqs_s = eqs_storage[key]
             r_view = local_residual_view(r, model, eq, equation_offset)

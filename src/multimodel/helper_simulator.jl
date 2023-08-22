@@ -20,7 +20,7 @@ function setup_helper_equation_storage!(storage, r, mm::MultiModel; offset = 0)
     end
 end
 
-function model_accumulation_internal!(acc, storage, mm::MultiModel; offset = 0)
+function model_accumulation_internal!(acc,storage, mm::MultiModel; offset = 0)
     for (k, model) in pairs(mm.models)
         offset = model_accumulation_internal!(acc, storage[k], model, offset = offset)
     end

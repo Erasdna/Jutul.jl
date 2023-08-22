@@ -18,6 +18,7 @@ function update_equation_in_entity!(eq_buf::AbstractVector{T_e}, self_cell, stat
     M = state[conserved]
     # Compute ∇⋅V
     disc = eq.flow_discretization
+    #println(Val(T_e))
     flux(face) = face_flux(face, eq, state, model, Δt, disc, ldisc, Val(T_e))
     div_v = ldisc.div(flux)
     for i in eachindex(div_v)

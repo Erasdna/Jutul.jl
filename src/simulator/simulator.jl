@@ -279,7 +279,7 @@ function perform_step!(storage, model, dt, forces, config; executor = default_ex
         update_secondary = iteration > 1 || config[:always_update_secondary]
     end
     e, converged = nothing, false
-    report = setup_ministep_report()
+    report = setup_ministep_report(r=storage.LinearizedSystem.r)
     # Update the properties and equations
     rec = storage.recorder
     time = rec.recorder.time + dt
@@ -303,6 +303,8 @@ function perform_step!(storage, model, dt, forces, config; executor = default_ex
         report[:converged] = converged
         report[:errors] = errors
     end
+
+    report[:r]=copy(storage.LinearizedSystem.r)
     report[:secondary_time] = t_secondary
     report[:equations_time] = t_eqs
     report[:linear_system_time] = t_lsys
